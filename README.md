@@ -4,8 +4,14 @@ A multi-tenant task management platform built with independently deployable micr
 
 ## Repositories
 
-- **User Service:** Handles tenant management, user profiles, and user-related APIs.
-- **Auth Service:** Handles credentials, authentication, JWTs, and refresh-token sessions. *(Planned)*
+## Microservices
+
+| Service | Responsibility | Repository |
+|---|---|---|
+| User Service | Tenant management, user profiles, and user APIs | [taskforge-user-service](https://github.com/yatharthojha1999/taskforge-user-service) |
+| Auth Service | Credentials, login, JWTs, and refresh-token sessions | Planned |
+
+Each microservice is maintained in its own GitHub repository with independent code, dependencies, migrations, and deployment configuration.
 
 ## Architecture
 
