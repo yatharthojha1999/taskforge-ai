@@ -1,3 +1,0 @@
-[submodule "services/taskforge-user-service"]
-	path = services/taskforge-user-service
-	url = https://github.com/yatharthojha1999/taskforge-user-service.git
