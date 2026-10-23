@@ -1,0 +1,109 @@
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: taskforge
+      POSTGRES_USER: taskforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5433:5432"
+    volumes:
+      - taskforge_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  user-service:
+    build:
+      context: ./taskForge-ai-users
+      target: runtime
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: taskforge_users
+      DB_USER: taskforge
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTH_SERVICE_URL: http://auth-service:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ./taskforge-auth-service
+      target: runtime
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: taskforge_auth
+      DB_USER: taskforge
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      USER_SERVICE_URL: http://user-service:3000
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt-private-key
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_ISSUER: taskforge-auth-service
+      JWT_AUDIENCE: taskforge-api
+    ports:
+      - "3001:3001"
+    secrets:
+      - jwt-private-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+
+  
+  user-migrate:
+    build:
+      context: ./taskForge-ai-users
+      target: migration
+    restart: "no"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: taskforge_users
+      DB_USER: taskforge
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    profiles:
+      - migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-migrate:
+    build:
+      context: ./taskforge-auth-service
+      target: migration
+    restart: "no"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: taskforge_auth
+      DB_USER: taskforge
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    profiles:
+      - migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-migrate:
+        condition: service_completed_successfully
+
+
+secrets:
+  jwt-private-key:
+    file: ./taskforge-auth-service/jwt-private.pem
+
+volumes:
+  taskforge_postgres_data:
